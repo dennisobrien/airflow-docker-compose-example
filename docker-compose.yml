@@ -1,0 +1,83 @@
+version: '2'
+
+services:
+  airflow_webserver:
+    image: airflow:github
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+    - "8080:8080"
+    depends_on:
+    - db
+    - airflow_redis
+    - airflow_scheduler
+    environment:
+      SQLALCHEMY_DATABASE_URI: mysql://admin:testingtesting123@db:3306/airflow
+      REDIS_URI: redis://airflow_redis
+      FLOWER_HOST: 0.0.0.0
+      AIRFLOW_RUNAS_WEBSERVER: 1
+    entrypoint: ./wait-for-it.sh airflow_scheduler:8080 -- ./docker-entrypoint.sh
+
+  airflow_flower:
+    image: airflow:github
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+    - "5555:5555"
+    depends_on:
+    - db
+    - airflow_redis
+    - airflow_scheduler
+    environment:
+      SQLALCHEMY_DATABASE_URI: mysql://admin:testingtesting123@db:3306/airflow
+      REDIS_URI: redis://airflow_redis
+      AIRFLOW_RUNAS_FLOWER: 1
+      FLOWER_HOST: 0.0.0.0
+    entrypoint: ./wait-for-it.sh airflow_scheduler:8080 -- ./docker-entrypoint.sh
+
+  airflow_scheduler:
+    image: airflow:github
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+    - db
+    - airflow_redis
+    environment:
+      SQLALCHEMY_DATABASE_URI: mysql://admin:testingtesting123@db:3306/airflow
+      REDIS_URI: redis://airflow_redis
+      FLOWER_HOST: 0.0.0.0
+      AIRFLOW_RUNAS_SCHEDULER: 1
+    entrypoint: ./wait-for-it.sh db:3306 -- ./docker-entrypoint.sh
+
+  airflow_worker:
+    image: airflow:github
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+    - db
+    - airflow_redis
+    - airflow_scheduler
+    environment:
+      SQLALCHEMY_DATABASE_URI: mysql://admin:testingtesting123@db:3306/airflow
+      REDIS_URI: redis://airflow_redis
+      FLOWER_HOST: 0.0.0.0
+      AIRFLOW_RUNAS_WORKER: 1
+    entrypoint: ./wait-for-it.sh airflow_scheduler:8080 -- ./docker-entrypoint.sh
+
+  airflow_redis:
+    image: redis:3.2
+  
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: testingtesting123
+      MYSQL_DATABASE: airflow
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: testingtesting123
+      MYSQL_PORT: 3306
+    ports:
+    - "3306:3306"
