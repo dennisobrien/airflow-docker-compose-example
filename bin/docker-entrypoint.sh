@@ -11,7 +11,7 @@ if [ "$AIRFLOW_RUNAS_SCHEDULER" = "1" ]; then
     echo "running airflow scheduler"
     while true
     do
-        airflow scheduler --num_runs 0
+        airflow scheduler
         echo "restarting airflow scheduler"
         sleep 1
     done
