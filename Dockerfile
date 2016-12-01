@@ -31,6 +31,7 @@ ENV AIRFLOW_HOME=/usr/local/airflow
 ENV AIRFLOW_DAGS_WORKSPACE=${AIRFLOW_HOME}/workspace \
     AIRFLOW_DAGS_DIR=${AIRFLOW_HOME}/dags \
     AIRFLOW_FERNET_KEY=some_very_secret_key \
+    AIRFLOW_WEBSERVER_SECRET_KEY=some_very_very_secret_key
     
 RUN useradd -ms /bin/bash -d ${AIRFLOW_HOME} airflow
 

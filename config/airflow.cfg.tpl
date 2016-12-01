@@ -66,7 +66,6 @@ load_examples = True
 plugins_folder = {{ AIRFLOW_HOME }}/plugins
 
 # Secret key to save connection passwords in the db
-# FIXME
 fernet_key = {{ AIRFLOW_FERNET_KEY }}
 
 # Whether to disable pickling dags
@@ -74,6 +73,34 @@ donot_pickle = False
 
 # How long before timing out a python file import while filling the DagBag
 dagbag_import_timeout = 30
+
+# What security module to use (for example kerberos):
+security =
+
+# Turn unit test mode on (overwrites many configuration options with test
+# values at runtime)
+unit_test_mode = False
+
+[cli]
+# In what way should the cli access the API. The LocalClient will use the
+# database directly, while the json_client will use the api running on the
+# webserver
+api_client = airflow.api.client.local_client
+endpoint_url = http://localhost:8080
+
+[api]
+# How to authenticate users of the API
+auth_backend = airflow.api.auth.backend.default
+
+[operators]
+# The default owner assigned to each new operator, unless
+# provided explicitly or passed via `default_args`
+default_owner = Airflow
+default_cpus = 1
+default_ram = 512
+default_disk = 512
+default_gpus = 0
+
 
 [webserver]
 # The base url of your website as airflow cannot guess what domain or
@@ -87,12 +114,25 @@ web_server_host = 0.0.0.0
 # The port on which to run the web server
 web_server_port = 8080
 
-# The time the gunicorn webserver waits before timing out on a worker
+# Paths to the SSL certificate and key for the web server. When both are
+# provided SSL will be enabled. This does not change the web server port.
+web_server_ssl_cert =
+web_server_ssl_key =
+
+# Number of seconds the gunicorn webserver waits before timing out on a worker
 web_server_worker_timeout = 120
+
+# Number of workers to refresh at a time. When set to 0, worker refresh is
+# disabled. When nonzero, airflow periodically refreshes webserver workers by
+# bringing up new ones and killing old ones.
+worker_refresh_batch_size = 1
+
+# Number of seconds to wait before refreshing a batch of workers.
+worker_refresh_interval = 30
 
 # Secret key used to run your flask app
 # FIXME
-secret_key = some_very_secret_key
+secret_key = {{ AIRFLOW_WEBSERVER_SECRET_KEY }}
 
 # Number of workers to run the Gunicorn web server
 workers = 4
@@ -101,30 +141,59 @@ workers = 4
 # sync (default), eventlet, gevent
 worker_class = sync
 
-# Expose the configuration file in the web server
-expose_config = true
+# Log files for the gunicorn webserver. '-' means log to stderr.
+access_logfile = -
+error_logfile = -
 
-# Set to true to turn on authentication : http://pythonhosted.org/airflow/installation.html#web-authentication
+# Expose the configuration file in the web server
+expose_config = False
+
+# Set to true to turn on authentication:
+# http://pythonhosted.org/airflow/installation.html#web-authentication
 authenticate = False
 
 # Filter the list of dags by owner name (requires authentication to be enabled)
 filter_by_owner = False
 
+# Filtering mode. Choices include user (default) and ldapgroup.
+# Ldap group filtering requires using the ldap backend
+#
+# Note that the ldap server needs the "memberOf" overlay to be set up
+# in order to user the ldapgroup mode.
+owner_mode = user
+
+# Default DAG orientation. Valid values are:
+# LR (Left->Right), TB (Top->Bottom), RL (Right->Left), BT (Bottom->Top)
+dag_orientation = LR
+
+# Puts the webserver in demonstration mode; blurs the names of Operators for
+# privacy.
+demo_mode = False
+
+# The amount of time (in secs) webserver will wait for initial handshake
+# while fetching logs from other worker machine
+log_fetch_timeout_sec = 5
+
+# By default, the webserver shows paused DAGs. Flip this to hide paused
+# DAGs by default
+hide_paused_dags_by_default = False
+
 [email]
 email_backend = airflow.utils.email.send_email_smtp
 
+
 [smtp]
-# If you want airflow to send emails on retries, failure, and you want to
-# the airflow.utils.send_email function, you have to configure an smtp
-# server here
-# FIXME
+# If you want airflow to send emails on retries, failure, and you want to use
+# the airflow.utils.email.send_email_smtp function, you have to configure an
+# smtp server here
 smtp_host = localhost
 smtp_starttls = True
 smtp_ssl = False
 smtp_user = airflow
 smtp_port = 25
 smtp_password = airflow
-smtp_mail_from = airflow@airflow.local
+smtp_mail_from = airflow@airflow.com
+
 
 [celery]
 # This section only applies if you are using the CeleryExecutor in
@@ -159,12 +228,12 @@ celery_result_backend = {{ REDIS_URI }}
 # it `airflow flower`. This defines the IP that Celery Flower runs on
 flower_host = {{ FLOWER_HOST }}
 
-# Celery Flower is a sweet UI for Celery. Airflow has a shortcut to start
-# it `airflow flower`. This defines the port that Celery Flower runs on
+# This defines the port that Celery Flower runs on
 flower_port = 5555
 
 # Default queue that tasks get assigned to and that worker listen on.
 default_queue = default
+
 
 [scheduler]
 # Task instances listen for external kill signal (when you clear tasks
@@ -177,16 +246,33 @@ job_heartbeat_sec = 5
 # how often the scheduler should run (in seconds).
 scheduler_heartbeat_sec = 5
 
+# after how much time should the scheduler terminate in seconds
+# -1 indicates to run continuously (see also num_runs)
+run_duration = -1
+
+# after how much time a new DAGs should be picked up from the filesystem
+min_file_process_interval = 0
+
+dag_dir_list_interval = 300
+
+# How often should stats be printed to the logs
+print_stats_interval = 30
+
+child_process_log_directory = /tmp/airflow/scheduler/logs
+
 # Statsd (https://github.com/etsy/statsd) integration settings
-# statsd_on =  False
-# statsd_host =  localhost
-# statsd_port =  8125
-# statsd_prefix = airflow
+statsd_on = False
+statsd_host = localhost
+statsd_port = 8125
+statsd_prefix = airflow
 
 # The scheduler can run multiple threads in parallel to schedule dags.
 # This defines how many threads will run. However airflow will never
 # use more threads than the amount of cpu cores available.
 max_threads = 2
+
+authenticate = False
+
 
 [mesos]
 # Mesos master address which MesosExecutor will connect to.
@@ -224,3 +310,21 @@ authenticate = False
 # Mesos credentials, if authentication is enabled
 # default_principal = admin
 # default_secret = admin
+
+
+[kerberos]
+ccache = /tmp/airflow_krb5_ccache
+# gets augmented with fqdn
+principal = airflow
+reinit_frequency = 3600
+kinit_path = kinit
+keytab = airflow.keytab
+
+
+[github_enterprise]
+api_rev = v3
+
+
+[admin]
+# UI to hide sensitive variable fields when set to True
+hide_sensitive_variable_fields = True
