@@ -12,7 +12,7 @@ pandas==0.18.1
 psutil==4.3.1
 psycopg2==2.6.2
 pyasn1==0.1.9
-pyopenssl==16.0.0
+pyopenssl>=17.5.0
 requests==2.11.1
 seaborn==0.7.1
 sh==1.11
